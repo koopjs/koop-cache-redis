@@ -1,84 +1,120 @@
-const Redis = require('ioredis')
-const config = require('config')
-function Cache () {
-  this.client = new Redis(config.queue.connection)
+const test = require('tape')
+const Cache = require('../src')
+const cache = new Cache()
+const _ = require('lodash')
+const geojson = {
+  type: 'FeatureCollection',
+  metadata: {
+    name: 'Test',
+    description: 'Test'
+  },
+  features: [
+    {
+      type: 'Feature',
+      properties: {
+        key: 'value'
+      },
+      geometry: {
+        foo: 'bar'
+      }
+    }
+  ]
 }
 
+test('Inserting and retreiving from the cache', t => {
+  cache.insert('key', geojson, {ttl: 600})
+  const cached = cache.retrieve('key')
+  t.equal(cached.features[0].properties.key, 'value', 'retrieved features')
+  t.equal(cached.metadata.name, 'Test', 'retrieved metadata')
+  t.ok(cached.metadata.expires, 'expiration set')
+  t.ok(cached.metadata.updated, 'updated set')
+  t.end()
+})
 
-Cache.prototype.type = 'cache';
-Cache.prototype.plugin_name = 'Redis Cache';
-Cache.prototype.version = '#!';
+test('Inserting and retreiving from the cache using upsert when the cache is empty', t => {
+  cache.upsert('keyupsert', geojson, {ttl: 600})
+  const cached = cache.retrieve('keyupsert')
+  t.equal(cached.features[0].properties.key, 'value', 'retrieved features')
+  t.equal(cached.metadata.name, 'Test', 'retrieved metadata')
+  t.ok(cached.metadata.expires, 'expiration set')
+  t.ok(cached.metadata.updated, 'updated set')
+  t.end()
+})
 
-Cache.prototype.connect = function () {
-  return this
-};
+test('Inserting and retreiving from the cache using upsert when the cache is filled', t => {
+  cache.insert('keyupsertupdate', geojson, {ttl: 600})
+  const geojson2 = _.cloneDeep(geojson)
+  geojson2.features[0].properties['key'] = 'updated'
+  cache.upsert('keyupsertupdate', geojson2, {ttl: 600})
+  const cached = cache.retrieve('keyupsertupdate')
+  t.equal(cached.features[0].properties.key, 'updated', 'retrieved features')
+  t.equal(cached.metadata.name, 'Test', 'retrieved metadata')
+  t.ok(cached.metadata.expires, 'expiration set')
+  t.ok(cached.metadata.updated, 'updated set')
+  t.end()
+})
 
-Cache.prototype.serviceRegister = function (type, info, callback) {
-console.log(type, info)
-  this.client.hset(type, info.id, info.host, function (err) {
-    callback(err);
-  });
-};
+test('Inserting and retreiving from the cache callback style', t => {
+  cache.insert('keyb', geojson, {ttl: 600}, (err) => {
+    t.error(err, 'no error')
+    const cached = cache.retrieve('keyb')
+    t.equal(cached.features[0].properties.key, 'value', 'retrieved features')
+    t.equal(cached.metadata.name, 'Test', 'retrieved metadata')
+    t.ok(cached.metadata.expires, 'expiration set')
+    t.ok(cached.metadata.updated, 'updated set')
+    t.end()
+  })
+})
 
-Cache.prototype.serviceGet = function (type, id, callback) {
-console.log(type, id)
-  if (!id) return callback(null, [{'foo': 'bar'}])
-   this.client.hget(type, id, function (err, host) {
-    console.log("this is the host", host)
-    callback(err, {id: id, host: host});
-  });
-};
+test('Inserting and appending to the cache', t => {
+  cache.insert('key2', geojson, {ttl: 600})
+  cache.append('key2', geojson)
+  const cached = cache.retrieve('key2')
+  t.equal(cached.features.length, 2, 'retrieved all features')
+  t.equal(cached.metadata.name, 'Test', 'retrieved metadata')
+  t.ok(cached.metadata.expires, 'expiration set')
+  t.ok(cached.metadata.updated, 'updated set')
+  t.end()
+})
 
-Cache.prototype.getCount = function (table, options, callback) {
-  callback(null, 0);
-};
+test('Updating an existing entry in the cache', t => {
+  cache.insert('key3', geojson, {ttl: 600})
+  const geojson2 = _.cloneDeep(geojson)
+  geojson2.features[0].properties.key = 'test2'
+  cache.update('key3', geojson2, {ttl: 1000})
+  const cached = cache.retrieve('key3')
+  t.equal(cached.features[0].properties.key, 'test2', 'retrieved only new features')
+  t.equal(cached.features.length, 1, 'retrieved only new features')
+  t.equal(cached.metadata.name, 'Test', 'retrieved original metadata')
+  t.ok(cached.metadata.expires, 'expiration set')
+  t.ok(cached.metadata.updated, 'updated set')
+  t.end()
+})
 
-Cache.prototype.updateInfo = function (table, info, callback) {
-  this.client.hset('info', table, JSON.stringify(info), function (err) {
-    callback(err);
-  });
-};
+test('Inserting and deleting from the cache', t => {
+  t.plan(2)
+  cache.insert('key4', geojson)
+  cache.delete('key4')
+  cache.retrieve('key4', {}, (err, data) => {
+    t.ok(err, 'Should return an error')
+    t.equal(err.message, 'Resource not found', 'Error should have correct message')
+  })
+})
 
-Cache.prototype.getInfo = function (table, callback) {
-  this.client.hget('info', table, function (err, json) {
-    if (err) return callback(err);
-    if (!json) return callback(new Error('Resource not found'));
-    var info = undefined;
-    try {
-      info = JSON.parse(json);
-    } catch (e) {
-      console.log(e, json);
-      return callback(new Error('Error parsing JSON'));
-    }
-    callback(null, info);
-  });
-};
+test('Trying to call insert when something is already in the cache', t => {
+  t.plan(2)
+  cache.insert('key5', geojson)
+  cache.insert('key5', geojson, {}, err => {
+    t.ok(err, 'Should return an error')
+    t.equal(err.message, 'Cache key is already in use', 'Error should have correct message')
+  })
+})
 
-Cache.prototype.insert = function (id, table, layerId, callback) {
-console.log(id, table, layerId, callback)
-  if (table.info) {
-    var info = table.info;
-    info.name = table.name;
-    info.status = table.status;
-    info.updated_at = table.updated_at;
-    info.expires_at = table.expires_at;
-    info.retrieved_at = table.retrieved_at;
-    info.geomtype = table.geomtype;
-    info.host = table.host;
-    this.updateInfo(id + ':' + layerId, info, callback);
-  } else {
-    callback(null);
-  }
-};
-
-Cache.prototype.insertPartial = function (id, geojson, layer, callback) {
-  callback(null);
-};
-
-Cache.prototype.addIndexes = function (table, options, callback) {
-  callback(null);
-};
-
-var cache = new Cache()
-
-module.exports = cache
+test('Trying to delete the catalog entry when something is still in the cache', t => {
+  t.plan(2)
+  cache.insert('key6', geojson)
+  cache.catalog.delete('key6', err => {
+    t.ok(err, 'Should return an error')
+    t.equal(err.message, 'Cannot delete catalog entry while data is still in cache', 'Error should have correct message')
+  })
+})
