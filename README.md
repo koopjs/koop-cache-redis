@@ -6,6 +6,8 @@
 To use this cache:
 First: npm install koop-cache-redis
 Then: configure your host. In your config file
+
+config/production.json
 ```json
 {
   "cache": {
@@ -16,6 +18,7 @@ Then: configure your host. In your config file
 }
 ```
 If using environment variables like
+config/custom_environment_variables.json
 ```json
 {
   "cache": {
