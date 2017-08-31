@@ -18,7 +18,7 @@ config/production.json
 }
 ```
 If using environment variables like
-config/custom_environment_variables.json
+config/custom-environment-variables.json
 ```json
 {
   "cache": {
