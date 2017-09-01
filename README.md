@@ -4,7 +4,7 @@
 ## Usage
 
 To use this cache:
-First: npm install koop-cache-redis
+First: npm install @koopjs/cache-redis
 Then: configure your host. In your config file
 
 config/production.json
