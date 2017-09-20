@@ -37,7 +37,7 @@ Then require and register the redis cache with Koop
 const Koop = require('koop')
 const koop = new Koop()
 const config = require('config')
-const cache = require('koop-cache-redis')
+const cache = require('@koopjs/cache-redis')
 koop.register(cache)
 ```
 
