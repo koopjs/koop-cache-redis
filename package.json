@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/koopjs/koop-cache-redis#readme",
   "dependencies": {
-    "config": "^1.26.2",
+    "config": "^2.0.0",
     "koop-logger": "^1.2.0",
     "redis": "^2.8.0"
   },
