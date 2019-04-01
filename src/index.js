@@ -8,6 +8,9 @@ const Logger = require('koop-logger')
 const log = new Logger()
 const config = require('config')
 
+// Convenience to make callbacks optional in most functions
+function noop () {}
+
 function Cache (options = {}) {
   const host = options.host || config.cache.redis.host
   this.client = this.catalog.client = redis.createClient(host)
@@ -19,6 +22,10 @@ function Cache (options = {}) {
   this.catalog.set = this.set
   this.catalog.get = this.get
 }
+
+Cache.name = 'Redis Cache'
+Cache.type = 'cache'
+Cache.version = require('../package.json').version
 
 Cache.prototype.disconnect = function () {
   this.client.quit()
@@ -34,14 +41,10 @@ Cache.prototype.get = function (field, key, callback) {
   })
 }
 
-Cache.name = 'Redis Cache'
-Cache.type = 'cache'
-Cache.version = require('../package.json').version
-
 Util.inherits(Cache, EventEmitter)
 
-Cache.prototype.insert = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.insert = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -60,8 +63,8 @@ Cache.prototype.insert = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.upsert = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.upsert = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -76,8 +79,8 @@ Cache.prototype.upsert = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.update = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.update = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -98,9 +101,8 @@ Cache.prototype.update = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.append = function (key, geojson, options = {}, callback) {
-  // TODO use lists instead of hash keys
-  if (!callback) {
+Cache.prototype.append = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -114,9 +116,8 @@ Cache.prototype.append = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.retrieve = function (key, options, callback) {
-  // TODO use promise.all
-  if (!callback) {
+Cache.prototype.retrieve = function (key, options, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
