@@ -148,6 +148,29 @@ test('Trying to delete the catalog entry when something is still in the cache', 
   })
 })
 
+test('Ensure multiple entries are hashed properly', t => {
+  cache.insert('key7', geojson, {}, e => {
+    t.error(e, 'no error in callback')
+    const geojson2 = _.cloneDeep(geojson)
+    geojson2.features[0].properties.key = 'test2'
+    geojson2.metadata.name = 'Test2'
+    cache.insert('key8', geojson2, {}, e => {
+      t.error(e, 'no error in callback')
+      cache.retrieve('key8', (e, cached) => {
+        t.error(e, 'no error in callback')
+        t.equals(cached.metadata.name, 'Test2')
+        t.equal(cached.features[0].properties.key, 'test2', 'retrieved only new features')
+        cache.retrieve('key7', (e, cached) => {
+          t.error(e, 'no error in callback')
+          t.equals(cached.metadata.name, 'Test')
+          t.equal(cached.features[0].properties.key, 'value', 'retrieved only new features')
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 test('teardown', t => {
   cache.disconnect()
   t.pass('disconnected')

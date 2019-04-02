@@ -3,10 +3,13 @@ const Util = require('util')
 const EventEmitter = require('events')
 const _ = require('lodash')
 const FEATURES = 'koop-cache-redis::features'
-const METADATA = 'kooop-cache-redis::metadata'
+const METADATA = 'koop-cache-redis::metadata'
 const Logger = require('koop-logger')
 const log = new Logger()
 const config = require('config')
+
+// Convenience to make callbacks optional in most functions
+function noop () {}
 
 function Cache (options = {}) {
   const host = options.host || config.cache.redis.host
@@ -20,33 +23,33 @@ function Cache (options = {}) {
   this.catalog.get = this.get
 }
 
-Cache.prototype.disconnect = function () {
-  this.client.quit()
-}
-
-Cache.prototype.set = function (type, key, value, callback) {
-  this.client.hset(type, key, JSON.stringify(value), callback)
-}
-
-Cache.prototype.get = function (type, key, callback) {
-  this.client.hget(type, key, (e, string) => {
-    callback(e, JSON.parse(string))
-  })
-}
-
 Cache.name = 'Redis Cache'
 Cache.type = 'cache'
 Cache.version = require('../package.json').version
 
+Cache.prototype.disconnect = function () {
+  this.client.quit()
+}
+
+Cache.prototype.set = function (field, key, value, callback) {
+  this.client.hmset(key, [field, JSON.stringify(value)], callback)
+}
+
+Cache.prototype.get = function (field, key, callback) {
+  this.client.hget(key, field, (e, string) => {
+    callback(e, JSON.parse(string))
+  })
+}
+
 Util.inherits(Cache, EventEmitter)
 
-Cache.prototype.insert = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.insert = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
   // support a feature collection or an array of features
-  this.client.hexists(FEATURES, key, (e, exists) => {
+  this.client.hexists(key, FEATURES, (e, exists) => {
     if (e) return callback(e)
     else if (exists) return callback(new Error('Cache key is already in use'))
     const features = geojson.features ? geojson.features : geojson
@@ -60,12 +63,12 @@ Cache.prototype.insert = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.upsert = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.upsert = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
-  this.client.hexists(FEATURES, key, (e, exists) => {
+  this.client.hexists(key, FEATURES, (e, exists) => {
     if (e) {
       return callback(e)
     } else if (exists) {
@@ -76,13 +79,13 @@ Cache.prototype.upsert = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.update = function (key, geojson, options = {}, callback) {
-  if (!callback) {
+Cache.prototype.update = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
   // support a feature collection or an array of features
-  this.client.hexists(FEATURES, key, (e, exists) => {
+  this.client.hexists(key, FEATURES, (e, exists) => {
     if (e) return callback(e)
     else if (!exists) return callback(new Error('Resource not found'))
     const features = geojson.features ? geojson.features : geojson
@@ -98,9 +101,8 @@ Cache.prototype.update = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.append = function (key, geojson, options = {}, callback) {
-  // TODO use lists instead of hash keys
-  if (!callback) {
+Cache.prototype.append = function (key, geojson, options = {}, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -114,9 +116,8 @@ Cache.prototype.append = function (key, geojson, options = {}, callback) {
   })
 }
 
-Cache.prototype.retrieve = function (key, options, callback) {
-  // TODO use promise.all
-  if (!callback) {
+Cache.prototype.retrieve = function (key, options, callback = noop) {
+  if (typeof options === 'function') {
     callback = options
     options = {}
   }
@@ -136,7 +137,7 @@ Cache.prototype.createStream = function (key, options = {}) {
 
 Cache.prototype.delete = function (key, callback) {
   // TODO use HEXISTS
-  this.client.hdel(FEATURES, key, e => {
+  this.client.hdel(key, FEATURES, e => {
     if (e) return callback(new Error('Resource not found'))
     this.get(METADATA, key, (e, metadata) => {
       if (e) return callback(e)
@@ -150,7 +151,7 @@ Cache.prototype.delete = function (key, callback) {
 Cache.prototype.catalog = {}
 
 Cache.prototype.catalog.insert = function (key, metadata, callback) {
-  this.client.hexists(METADATA, key, (e, exists) => {
+  this.client.hexists(key, METADATA, (e, exists) => {
     if (e) return callback(e)
     else if (exists) return callback(new Error('Catalog key is already in use'))
     metadata.updated = Date.now()
@@ -177,10 +178,10 @@ Cache.prototype.catalog.retrieve = function (key, callback) {
 }
 
 Cache.prototype.catalog.delete = function (key, callback) {
-  this.client.hexists(FEATURES, key, (e, exists) => {
+  this.client.hexists(key, FEATURES, (e, exists) => {
     if (e) return callback(e)
     else if (exists) return callback(new Error('Cannot delete catalog entry while data is still in cache'))
-    this.client.hdel(METADATA, key, e => {
+    this.client.hdel(key, METADATA, e => {
       callback(e)
     })
   })
