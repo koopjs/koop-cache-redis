@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+### Fixed
+* added check for null `metadata` in cache delete
+
 ## [1.0.2] - 2019-04-02
 ### Fixed
 * type checking and handling of `callback` and `options` parameters
