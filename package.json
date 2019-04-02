@@ -1,6 +1,6 @@
 {
   "name": "@koopjs/cache-redis",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Redis Cache Plugin for Koop",
   "main": "dist/index.js",
   "scripts": {
