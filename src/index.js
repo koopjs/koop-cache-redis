@@ -141,6 +141,7 @@ Cache.prototype.delete = function (key, callback) {
     if (e) return callback(new Error('Resource not found'))
     this.get(METADATA, key, (e, metadata) => {
       if (e) return callback(e)
+      metadata = metadata || {}
       metadata.status = 'deleted'
       metadata.updated = Date.now()
       this.catalog.update(key, metadata, callback)
