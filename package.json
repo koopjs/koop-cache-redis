@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "buble": "^0.19.0",
-    "standard": "^14.0.0",
+    "standard": "^14.3.0",
     "tap-spec": "^5.0.0",
     "tape": "^4.8.0"
   }
