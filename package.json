@@ -29,7 +29,7 @@
     "redis": "^2.8.0"
   },
   "devDependencies": {
-    "buble": "^0.19.0",
+    "buble": "^0.20.0",
     "standard": "^14.0.0",
     "tap-spec": "^5.0.0",
     "tape": "^4.8.0"
