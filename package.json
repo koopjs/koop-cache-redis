@@ -2,10 +2,9 @@
   "name": "@koopjs/cache-redis",
   "version": "1.0.3",
   "description": "Redis Cache Plugin for Koop",
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "scripts": {
-    "compile": "rm -rf dist/* && buble -i src -o dist",
-    "test": "standard src && tape test/**/*.js | tap-spec"
+    "test": "tape src/**/*.spec.js | tap-spec"
   },
   "repository": {
     "type": "git",
@@ -24,14 +23,13 @@
   },
   "homepage": "https://github.com/koopjs/koop-cache-redis#readme",
   "dependencies": {
-    "config": "^3.1.0",
-    "koop-logger": "^1.2.0",
-    "redis": "^2.8.0"
+    "config": "^3.3.9",
+    "@koopjs/logger": "^5.0.0",
+    "redis": "^4.6.5"
   },
   "devDependencies": {
-    "buble": "^0.19.0",
-    "standard": "^14.0.0",
+    "standard": "^17.0.0",
     "tap-spec": "^5.0.0",
-    "tape": "^4.8.0"
+    "tape": "^5.6.3"
   }
 }
